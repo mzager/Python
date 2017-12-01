@@ -1,0 +1,690 @@
+from eve import Eve
+
+import json
+import base64
+from flask import request
+from flask import jsonify
+from flask import Response
+
+from Bio.Cluster import pca
+from Bio.Cluster import kcluster
+from Bio.Cluster import kmedoids
+from Bio.Cluster import somcluster
+from Bio.Cluster import clustercentroids
+from Bio.Cluster import treecluster
+
+from sklearn.manifold import MDS
+from sklearn.manifold import TSNE
+from sklearn.manifold import Isomap
+from sklearn.manifold import LocallyLinearEmbedding
+from sklearn.manifold import SpectralEmbedding
+
+from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
+from sklearn.decomposition import MiniBatchSparsePCA
+from sklearn.decomposition import KernelPCA
+from sklearn.decomposition import RandomizedPCA
+from sklearn.decomposition import SparsePCA
+from sklearn.decomposition import NMF
+from sklearn.decomposition import FactorAnalysis
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.decomposition import FastICA
+from sklearn.decomposition import DictionaryLearning
+from sklearn.decomposition import TruncatedSVD
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import AffinityPropagation
+from sklearn.cluster import Birch
+from sklearn.cluster import DBSCAN
+from sklearn.cluster import FeatureAgglomeration
+from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import MeanShift
+from sklearn.cluster import SpectralClustering
+
+
+def httpWrapper(content):
+    return Response(content, status=200, mimetype='application/json')
+
+def echo(content):
+    return httpWrapper(json.dumps(content))
+
+def cluster_bio_pca(content):
+    """ Bio Centroids | data:[[]] """
+    columnmean, coordinates, components, eigenvalues = pca(content['data'])
+    return httpWrapper(json.dumps({
+        'columnmean': columnmean.tolist(),
+        'coordinates': coordinates.tolist(),
+        'components': components.tolist(),
+        'eigenvalues': eigenvalues.tolist()
+    }))
+
+def cluster_bio_tree(content):
+    """ Bio Tree | data:[[]] """
+    tree = treecluster(
+        data=content['data'], 
+        method=content['c_method'], 
+        dist=content['dist'], 
+        transpose=content['transpose'])
+    nodes = list(map(lambda node: {'l':node.left,'r':node.right,'d':node.distance}, tree))
+    return httpWrapper(json.dumps(nodes))
+
+def cluster_bio_centroids(content):
+    """ Bio Centroids | data:[[]] """
+    cdata, cmask = clustercentroids(content['data'])
+    return httpWrapper(json.dumps({
+        'cdata': cdata.tolist(),
+        'cmask': cmask.tolist()
+    }))
+
+def cluster_bio_som(content):
+    """ Bio Som | data:[[]] """
+    clusterid, celldata = somcluster(content['data'])
+    return httpWrapper(json.dumps({
+        'clusterid': clusterid.tolist(),
+        'celldata': celldata.tolist()
+    }))
+
+def cluster_bio_kmedoids(content):
+    """ Bio K-Medoids | data:[[]] """
+    clusterid, error, nfound = kmedoids(content['data'])
+    return httpWrapper(json.dumps({
+        'clusterid': clusterid.tolist(),
+        'error': error,
+        'nfound': nfound
+    }))
+
+def cluster_bio_kcluster(content):
+    """ Bio K-Cluster | data:[[]] """
+    clusterid, error, nfound = kcluster(content['data'])
+    return httpWrapper(json.dumps({
+        'clusterid': clusterid.tolist(),
+        'error': error,
+        'nfound': nfound
+    }))
+
+def cluster_sk_pca(content):
+    """ SK PCA | components: N, data:[[]] """
+    _config = PCA(
+        n_components=content['n_components'],
+        copy=content['copy'],
+        whiten=content['whiten'],
+        svd_solver=content['svd_solver'],
+        tol = content['tol'],
+        iterated_power= content['iterated_power'],
+        random_state= None if (content['random_state']=='None') else content['random_state']
+        )
+
+    _result = _config.fit(content['data']).transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'explainedVariance': _config.explained_variance_.tolist(),
+        'explainedVarianceRatio': _config.explained_variance_ratio_.tolist(),
+        'singularValues': _config.singular_values_.tolist(),
+        'mean': _config.mean_.tolist(),
+        'nComponents': _config.n_components_,
+        'noiseVariance': _config.noise_variance_
+    }))
+
+def cluster_sk_pca_incremental(content):
+    """ SK PCA """
+    _config = IncrementalPCA(
+        n_components = content['n_components'],
+        whiten = content['whiten']
+        )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'explainedVariance': _config.explained_variance_.tolist(),
+        'explainedVarianceRatio': _config.explained_variance_ratio_.tolist(),
+        'singularValues': _config.singular_values_.tolist(),
+        'skVar': _config.var_.tolist(),
+        'mean': _config.mean_.tolist(),
+        'nComponents': _config.n_components_,
+        'noiseVariance': _config.noise_variance_,
+        'nSamplesSeen': _config.n_samples_seen_
+    }))
+
+def cluster_sk_pca_kernal(content):
+    """ PCA KERNAL """
+    _config = KernelPCA(
+        n_components=content['n_components'],
+        kernel=content['kernel'],
+        gamma=None,
+        degree=content['degree'],
+        coef0=content['coef0'],
+        kernel_params=None,
+        alpha=content['alpha'],
+        fit_inverse_transform=content['fit_inverse_transform'],
+        eigen_solver=content['eigen_solver'],
+        tol=content['tol'],
+        max_iter=None,
+        remove_zero_eig=content['remove_zero_eig'],
+        random_state=None,
+        copy_X=True,
+        n_jobs=-1
+        )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'lambdas':  _config.lambdas_.tolist(),
+        'alphas':  _config.alphas_.tolist(),
+        #'dualCoef':  _config.dual_coef_.tolist(),
+        #'X_transformed_fit_': _config.X_transformed_fit_.tolist(),
+        #'X_fit_': _config.X_fit_
+        }))
+
+def cluster_sk_pca_sparse(content):
+    """ x """
+    _config = SparsePCA(
+        n_components=content['n_components'],
+        alpha=content['alpha'],
+        ridge_alpha=content['ridge_alpha'],
+        max_iter=content['max_iter'],
+        tol=content['tol'],
+        method=content['sk_method'],
+        n_jobs=-1
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'error': _config.error_,
+        'iter': _config.n_iter_
+    }))
+
+def cluster_sk_linear_discriminant_analysis(content):
+    """ SK LDA | components: N, data:[[]], classes:[] """
+    _config = LinearDiscriminantAnalysis(n_components=content['components'])
+    _result = _config.fit(content['data'], content['classes']).transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result': _result.tolist()
+    }))
+
+
+def cluster_sk_latent_dirichlet_allocation(content):
+    """ SK LDA """
+    _config = LatentDirichletAllocation(
+        n_components=content['n_components'],
+        doc_topic_prior=None,
+        topic_word_prior=None,
+        learning_method=content['learning_method'],
+        learning_decay=content['learning_decay'],
+        learning_offset=content['learning_offset'],
+        max_iter=10,
+        batch_size=128,
+        mean_change_tol=content['mean_change_tol'],
+        n_jobs=-1)
+    _result = _config.fit(content['data']).transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result': _result.tolist(),
+        'components': _config.components_.tolist(),
+        'batchIter': _config.n_batch_iter_,
+        'nIter': _config.n_iter_,
+        'perplexity': _config.perplexity(content['data']),
+        'score': _config.score(content['data'])
+    }))
+
+
+def cluster_sk_dictionary_learning(content):
+    """ SK DL | | components: N, data:[[]], alpha: N, tol: N, fit: String, transform: String, split: bool """
+    _config = DictionaryLearning(
+        n_components=content['n_components'], 
+        alpha=content['alpha'],
+        max_iter=content['max_iter'],
+        tol=content['tol'],
+        fit_algorithm=content['fit_algorithm'], 
+        transform_algorithm=content['transform_algorithm'], 
+        split_sign=content['split_sign'],
+        n_jobs=-1)
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'error': _config.error_,
+        'nIter': _config.n_iter_
+    }))
+
+def cluster_sk_fast_ica(content):
+    """ sk fast ica | """
+    _config = FastICA(
+        n_components=content['n_components'], 
+        algorithm=content['algorithm'],
+        whiten=content['whiten'],
+        fun=content['fun'], 
+        tol=content['tol']
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'mixing': _config.mixing_.tolist(),
+        'nIter': _config.n_iter_
+    }))
+
+def cluster_sk_factor_analysis(content):
+    """ SK FA | components: N, data:[[]], classes:[] """
+    _config = FactorAnalysis(
+        n_components=content['n_components'],
+        svd_method=content['svd_method'],
+        tol=content['tol'])
+    _result = _config.fit(content['data']).transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result': _result.tolist(),
+        'loglike': _config.loglike_,
+        'noiseVariance':_config.noise_variance_.tolist(),
+        'nIter': _config.n_iter_
+    }))
+
+def cluster_sk_nmf(content):
+    """ """
+    _config = NMF(
+        n_components=content['n_components'],
+        init=content['init'],
+        solver=content['solver'],
+        beta_loss=content['beta_loss'],
+        tol=content['tol']
+        )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result': _result.tolist(),
+        'components': _config.components_.tolist(),
+        'reconstruction_err':_config.reconstruction_err_,
+        'nIter': _config.n_iter_
+    }))
+
+def cluster_sk_truncated_svd(content):
+    """ """
+    _config = TruncatedSVD(
+        n_components=content['n_components'],
+        algorithm=content['algorithm'],
+        tol=content['tol'],
+        n_iter=content['n_iter']
+        )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result': _result.tolist(),
+        'components': _config.components_.tolist(),
+        'explainedVariance': _config.explained_variance_.tolist(),
+        'explainedVarianceRatio': _config.explained_variance_ratio_.tolist(),
+        'singularValues': _config.singular_values_.tolist()
+    }))
+
+def manifold_sk_tsne(content):
+    """ SK TSNE """
+    _config = TSNE(
+        n_components=content['n_components'],
+        perplexity=content['perplexity'],
+        early_exaggeration=content['early_exaggeration'],
+        learning_rate=content['learning_rate'],
+        n_iter=content['n_iter'],
+        n_iter_without_progress=content['n_iter_without_progress'],
+        min_grad_norm=content['min_grad_norm'],
+        metric=content['metric'],
+        method=content['sk_method']
+        )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'embedding': _config.embedding_.tolist(),
+        'klDivergence': _config.kl_divergence_,
+        'nIter': _config.n_iter_
+    }))
+
+def manifold_sk_mds(content):
+    """ SK MDS """
+    _config = MDS(
+        n_components=content['n_components'],
+        metric=content['metric'],
+        eps=content['eps'],
+        dissimilarity=content['dissimilarity'],
+        n_jobs=-1)
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'embedding': _config.embedding_.tolist(),
+        'stress': _config.stress_,
+    }))
+
+def manifold_sk_iso_map(content):
+    """ ISO MAP """
+    _config = Isomap(
+        n_neighbors=content['n_neighbors'],
+        n_components=content['n_components'],
+        eigen_solver=content['eigen_solver'],
+        tol = content['tol'],
+        path_method=content['path_method'],
+        neighbors_algorithm=content['neighbors_algorithm'],
+        n_jobs=-1,
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'embedding': _config.embedding_.tolist()
+        #'kernalPca': _config.kernel_pca_,
+        #'distMatrix': _config.dist_matrix_.tolist()
+        #'reconstructionError': _config.reconstruction_error()
+    }))
+
+def manifold_sk_local_linear_embedding(content):
+    """ http://scikit-learn.org/stable/modules/generated/sklearn.manifold.Isomap.html#sklearn.manifold.Isomap """
+    _config = LocallyLinearEmbedding(
+        n_neighbors=content['n_neighbors'],
+        n_components=content['n_components'],
+        reg=content['reg'],
+        eigen_solver=content['eigen_solver'],
+        tol=content['tol'],
+        method=content['lle_method'],
+        hessian_tol=content['hessian_tol'],
+        modified_tol=content['modified_tol'],
+        neighbors_algorithm=content['neighbors_algorithm'],
+        n_jobs=-1
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'reconstructionError': _config.reconstruction_error_
+    }))
+
+def manifold_sk_spectral_embedding(content):
+    """ http://scikit-learn.org/stable/modules/generated/sklearn.manifold.Isomap.html#sklearn.manifold.Isomap """
+    _config = SpectralEmbedding(
+        n_components=content['n_components'],
+        affinity=content['affinity'],
+        gamma = None if (content['gamma']=='None') else content['gamma'],
+        eigen_solver = None if (content['eigen_solver']=='None') else content['eigen_solver'],
+        n_neighbors = None if (content['n_neighbors']=='None') else content['n_neighbors'],
+        n_jobs=-1
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist()
+        # 'embedding': _config.embedding_.tolist(),
+        # 'affinityMatrix': _config.affinity_matrix_.tolist()
+    }))
+
+def cluster_sk_affinity_propagation(content):
+    """ AffinityPropagation """
+    _config = AffinityPropagation(
+        damping = content['damping'],
+        max_iter = content['max_iter'],
+        convergence_iter = content['convergence_iter'],
+        copy = content['copy'],
+        preference = content['preference'],
+        affinity = content['affinity'],
+        verbose = content['verbose']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'cluster_centers_indices': _config.cluster_centers_indices_,
+        'cluster_centers': _config.cluster_centers_,
+        'labels': _config.labels_,
+        # 'affinity_matrix': affinity_matrix_,
+        'affinity_matrix': _configaffinity_matrix_,
+        'n_iter':  _config.n_iter_
+    }))
+
+def cluster_sk_birch(content):
+    """ Birch """
+    _config = Birch(
+        eps = content['eps'],
+        min_samples = content['min_samples'],
+        metric = content['metric'],
+        metric_params = content['metric_params'],
+        algorithm = content['algorithm'],
+        leaf_size = content['leaf_size'],
+        p = content['p'],
+        n_jobs = content['n_jobs']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'root': _config.root,
+        'dummy_leaf': _config.dummy_leaf_,
+        'subcluster_centers': _config.subcluster_centers_,
+        'subcluster_labels': _config.subcluster_labels_,
+        'labels': _config.affinity_matrix_
+    }))
+def cluster_sk_dbscan(content):
+    """ DBSCAN """
+    _config = DBSCAN(
+        threshold = content['threshold'],
+        branching_factor = content['branching_factor'],
+        n_clusters = content['n_clusters'],
+        compute_labels = content['compute_labels'],
+        copy = content['copy']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'core_sample_indices': _config.core_sample_indices_,
+        'components': _config.components_,
+        'labels': _config.labels_
+    }))
+def cluster_sk_agglomerative(content):
+    """ Agglomerative Clustering """
+    _config = AgglomerativeClustering(
+        n_clusters = content['n_clusters'],
+        affinity = content['affinity'],
+        linkage = content['linkage'],
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'n_leaves': _config.n_leaves_,
+        'n_components': _config.n_components_,
+        'labels': _config.labels_.tolist(),
+        'children': base64.b64encode(_config.children_)
+        #'children': _config.children_.tolist(),
+        #'labels': _config.labels_.toList()
+    }))
+def cluster_sk_feature_agglomeration(content):
+    """ FeatureAgglomeration """
+    _config = FeatureAgglomeration(
+        n_clusters = content['n_clusters'],
+        affinity = content['affinity'],
+        memory = content['memory'],
+        connectivity = content['connectivity'],
+        compute_full_tree = content['compute_full_tree'],
+        linkage = content['linkage'],
+        pooling_func = content['pooling_func']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'core_sample_indices': _config.labels_,
+        'n_leaves': _config.n_leaves_,
+        'n_components': _config.n_components_,
+        'children': base64.b64encode(_config.children_)
+    }))
+
+def cluster_sk_kmeans(content):
+    """ KMeans """
+    _config = KMeans(
+        n_clusters = content['n_clusters'],
+        init = content['init'],
+        n_init = content['n_init'],
+        max_iter = content['max_iter'],
+        tol = content['tol'],
+        precompute_distances = content['precompute_distances'],
+        verbose = content['verbose'],
+        random_state = content['random_state'],
+        copy_x = content['copy_x'],
+        n_jobs = content['n_jobs'],
+        algorithm = content['algorithm']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'cluster_centers': _config.cluster_centers_,
+        'labels': _config.labels_,
+        'inertia': _config.inertia_
+    }))
+
+def cluster_sk_mini_batch_kmeans(content):
+    """ MiniBatchKMeans """
+    _config = MiniBatchKMeans(
+        n_clusters = content['n_clusters'],
+        init = content['init'],
+        max_iter = content['max_iter'],
+        batch_size = content['batch_size'],
+        verbose = content['verbose'],
+        compute_labels = content['compute_labels'],
+        random_state = content['random_state'],
+        tol = content['tol'],
+        max_no_improvement = content['max_no_improvement'],
+        init_size = content['init_size'],
+        n_init = content['n_init'],
+        reassignment_ratio = content['reassignment_ratio']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'cluster_centers': _config.cluster_centers_,
+        'labels': _config.labels_,
+        'inertia': _config.inertia_
+    }))
+
+def cluster_sk_mean_shift(content):
+    """ MeanShift """
+    _config = MeanShift(
+        bandwidth = content['bandwidth'],
+        seeds = content['seeds'],
+        bin_seeding = content['bin_seeding'],
+        min_bin_freq = content['min_bin_freq'],
+        cluster_all = content['cluster_all'],
+        n_jobs = content['n_jobs']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'cluster_centers': _config.cluster_centers_,
+        'labels': _config.labels_
+    }))
+
+def cluster_sk_spectral(content):
+    """ SpectralClustering """
+    _config = SpectralClustering(
+        n_clusters = content['n_clusters'],
+        eigen_solver = content['eigen_solver'],
+        random_state = content['random_state'],
+        n_init = content['n_init'],
+        gamma = content['gamma'],
+        affinity = content['affinity'],
+        n_neighbors = content['n_neighbors'],
+        eigen_tol = content['eigen_tol'],
+        assign_labels = content['assign_labels'],
+        degree = content['degree'],
+        coef0 = content['coef0'],
+        kernel_params = content['kernel_params'],
+        n_jobs = content['n_jobs']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'affinity_matrix': _config.affinity_matrix_,
+        'labels': _config.labels_
+    }))
+
+def discriminant_analysis_sk_linear(content):
+    """ discriminant_analysis_LinearDiscriminantAnalysis """
+    _config = LinearDiscriminantAnalysis(
+        solver = content['solver'],
+        shrinkage = content['shrinkage'],
+        priors = content['priors'],
+        n_components = content['n_components'],
+        store_covariance = content['store_covariance'],
+        tol = content['tol']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'coef': _config.coef_,
+        'intercept': _config.intercept_,
+        'covariance': _config.covariance_,
+        'explained_variance_ratio': _config.explained_variance_ratio_,
+        'means': _config.means_,
+        'priors': _config.priors_,
+        'scalings': _config.scalings_,
+        'xbar': _config.xbar_,
+        'classes': _config.classes_
+    }))
+
+def discriminant_analysis_sk_quadratic(content):
+    """ discriminant_analysis_sk_QuadraticDiscriminantAnalysis """
+    _config = QuadraticDiscriminantAnalysis(
+        priors = content['priors'],
+        reg_param = content['reg_param'],
+        store_covariance = content['store_covariance'],
+        tol = content['tol']
+    )
+    _result = _config.fit_predict(content['data'])
+    return httpWrapper( json.dumps({
+        'result': _result.tolist(),
+        'covariance': _config.covariance_,
+        'means': _config.means_, 
+        'priors': _config.priors_,
+        'rotations': _config.rotations_, 
+        'scalings': _config.scalings_
+    }))
+
+
+
+# Start Eve Stuff
+def on_fetched_resource(resource, response):
+    for doc in response['_items']:
+        for field in doc.keys():
+            if field.startswith('_'):
+                del(doc[field])
+
+app = Eve(settings='./settings.py')
+app.on_fetched_resource += on_fetched_resource
+
+
+@app.route('/cpu', methods=['GET', 'POST'])
+def main():
+    """ Gateway """
+    content = request.get_json()
+    function_to_invoke = {
+        'cluster_bio_pca': cluster_bio_pca,
+        'cluster_bio_tree': cluster_bio_tree,
+        'cluster_bio_centroids': cluster_bio_centroids,
+        'cluster_bio_som': cluster_bio_som,
+        'cluster_bio_kmedoids': cluster_bio_kmedoids,
+        'cluster_bio_kcluster': cluster_bio_kcluster,
+        'cluster_sk_pca': cluster_sk_pca,
+        'cluster_sk_pca_incremental': cluster_sk_pca_incremental,
+        'cluster_sk_pca_kernal': cluster_sk_pca_kernal,
+        'cluster_sk_pca_sparse': cluster_sk_pca_sparse,
+        'cluster_sk_linear_discriminant_analysis': cluster_sk_linear_discriminant_analysis,
+        'cluster_sk_latent_dirichlet_allocation': cluster_sk_latent_dirichlet_allocation,
+        'cluster_sk_factor_analysis': cluster_sk_factor_analysis,
+        'cluster_sk_nmf': cluster_sk_nmf,
+        'cluster_sk_fast_ica': cluster_sk_fast_ica,
+        'cluster_sk_dictionary_learning': cluster_sk_dictionary_learning,
+        'cluster_sk_truncated_svd': cluster_sk_truncated_svd,
+        'manifold_sk_mds': manifold_sk_mds,
+        'manifold_sk_tsne': manifold_sk_tsne,
+        'manifold_sk_iso_map': manifold_sk_iso_map,
+        'manifold_sk_spectral_embedding': manifold_sk_spectral_embedding,
+        'manifold_sk_local_linear_embedding': manifold_sk_local_linear_embedding,
+        'cluster_sk_affinity_propagation': cluster_sk_affinity_propagation,
+        'cluster_sk_birch': cluster_sk_birch,
+        'cluster_sk_dbscan': cluster_sk_dbscan,
+        'cluster_sk_feature_agglomeration': cluster_sk_feature_agglomeration,
+        'cluster_sk_kmeans': cluster_sk_kmeans,
+        'cluster_sk_mini_batch_kmeans': cluster_sk_mini_batch_kmeans,
+        'cluster_sk_mean_shift': cluster_sk_mean_shift,
+        'cluster_sk_agglomerative': cluster_sk_agglomerative,
+        'cluster_sk_spectral': cluster_sk_spectral,
+        'discriminant_analysis_sk_linear': discriminant_analysis_sk_linear,
+        'discriminant_analysis_sk_quadratic': discriminant_analysis_sk_quadratic
+    }.get(content['method'], echo)
+    return function_to_invoke(content)
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0")
