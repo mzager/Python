@@ -641,7 +641,7 @@ def on_fetched_resource(resource, response):
             if field.startswith('_'):
                 del(doc[field])
 
-app = Eve(settings='./settings.py')
+app = Eve(settings='settings.py')
 app.on_fetched_resource += on_fetched_resource
 
 

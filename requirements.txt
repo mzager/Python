@@ -13,3 +13,11 @@ eve == 0.7.2
 ####### Latest 3.0.2     #######
 
 flask-cors == 3.0.2
+
+scikit-learn == 0.19.1
+
+scipy
+
+numpy
+
+biopython
