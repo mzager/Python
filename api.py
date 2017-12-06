@@ -644,6 +644,9 @@ def on_fetched_resource(resource, response):
 app = Eve(settings='settings.py')
 app.on_fetched_resource += on_fetched_resource
 
+@app.route("/")
+def hello():
+    return "Hello Pablo!"
 
 @app.route('/cpu', methods=['GET', 'POST'])
 def main():
