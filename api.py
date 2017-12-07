@@ -7,13 +7,6 @@ from flask import request
 from flask import jsonify
 from flask import Response
 
-from Bio.Cluster import pca
-from Bio.Cluster import kcluster
-from Bio.Cluster import kmedoids
-from Bio.Cluster import somcluster
-from Bio.Cluster import clustercentroids
-from Bio.Cluster import treecluster
-
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
 from sklearn.manifold import Isomap
@@ -50,60 +43,6 @@ def httpWrapper(content):
 
 def echo(content):
     return httpWrapper(json.dumps(content))
-
-def cluster_bio_pca(content):
-    """ Bio Centroids | data:[[]] """
-    columnmean, coordinates, components, eigenvalues = pca(content['data'])
-    return httpWrapper(json.dumps({
-        'columnmean': columnmean.tolist(),
-        'coordinates': coordinates.tolist(),
-        'components': components.tolist(),
-        'eigenvalues': eigenvalues.tolist()
-    }))
-
-def cluster_bio_tree(content):
-    """ Bio Tree | data:[[]] """
-    tree = treecluster(
-        data=content['data'], 
-        method=content['c_method'], 
-        dist=content['dist'], 
-        transpose=content['transpose'])
-    nodes = list(map(lambda node: {'l':node.left,'r':node.right,'d':node.distance}, tree))
-    return httpWrapper(json.dumps(nodes))
-
-def cluster_bio_centroids(content):
-    """ Bio Centroids | data:[[]] """
-    cdata, cmask = clustercentroids(content['data'])
-    return httpWrapper(json.dumps({
-        'cdata': cdata.tolist(),
-        'cmask': cmask.tolist()
-    }))
-
-def cluster_bio_som(content):
-    """ Bio Som | data:[[]] """
-    clusterid, celldata = somcluster(content['data'])
-    return httpWrapper(json.dumps({
-        'clusterid': clusterid.tolist(),
-        'celldata': celldata.tolist()
-    }))
-
-def cluster_bio_kmedoids(content):
-    """ Bio K-Medoids | data:[[]] """
-    clusterid, error, nfound = kmedoids(content['data'])
-    return httpWrapper(json.dumps({
-        'clusterid': clusterid.tolist(),
-        'error': error,
-        'nfound': nfound
-    }))
-
-def cluster_bio_kcluster(content):
-    """ Bio K-Cluster | data:[[]] """
-    clusterid, error, nfound = kcluster(content['data'])
-    return httpWrapper(json.dumps({
-        'clusterid': clusterid.tolist(),
-        'error': error,
-        'nfound': nfound
-    }))
 
 def cluster_sk_pca(content):
     """ SK PCA | components: N, data:[[]] """
@@ -655,12 +594,6 @@ def main():
     """ Gateway """
     content = request.get_json()
     function_to_invoke = {
-        'cluster_bio_pca': cluster_bio_pca,
-        'cluster_bio_tree': cluster_bio_tree,
-        'cluster_bio_centroids': cluster_bio_centroids,
-        'cluster_bio_som': cluster_bio_som,
-        'cluster_bio_kmedoids': cluster_bio_kmedoids,
-        'cluster_bio_kcluster': cluster_bio_kcluster,
         'cluster_sk_pca': cluster_sk_pca,
         'cluster_sk_pca_incremental': cluster_sk_pca_incremental,
         'cluster_sk_pca_kernal': cluster_sk_pca_kernal,
@@ -692,4 +625,4 @@ def main():
     return function_to_invoke(content)
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0")
+    app.run()
