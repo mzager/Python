@@ -585,11 +585,7 @@ def discriminant_analysis_sk_quadratic(content):
 # app.on_fetched_resource += on_fetched_resource
 app = Flask(__name__)
 
-@app.route("/")
-def hello():
-    return "Hello Pablo!"
-
-@app.route('/cpu', methods=['GET', 'POST'])
+@app.route('/py', methods=['GET', 'POST'])
 def main():
     """ Gateway """
     content = request.get_json()
