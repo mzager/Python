@@ -1,4 +1,5 @@
-from eve import Eve
+# from eve import Eve
+from flask import Flask
 
 import json
 import base64
@@ -635,14 +636,15 @@ def discriminant_analysis_sk_quadratic(content):
 
 
 # Start Eve Stuff
-def on_fetched_resource(resource, response):
-    for doc in response['_items']:
-        for field in doc.keys():
-            if field.startswith('_'):
-                del(doc[field])
+# def on_fetched_resource(resource, response):
+#     for doc in response['_items']:
+#         for field in doc.keys():
+#             if field.startswith('_'):
+#                 del(doc[field])
 
-app = Eve(settings='settings.py')
-app.on_fetched_resource += on_fetched_resource
+# app = Eve(settings='settings.py')
+# app.on_fetched_resource += on_fetched_resource
+app = Flask(__name__)
 
 @app.route("/")
 def hello():
