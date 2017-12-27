@@ -1,5 +1,6 @@
 # from eve import Eve
 from flask import Flask
+from flask_cors import CORS
 
 import json
 import base64
@@ -584,6 +585,7 @@ def discriminant_analysis_sk_quadratic(content):
 # app = Eve(settings='settings.py')
 # app.on_fetched_resource += on_fetched_resource
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/py', methods=['GET', 'POST'])
 def main():
