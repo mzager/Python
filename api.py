@@ -17,6 +17,8 @@ from sklearn.manifold import SpectralEmbedding
 from sklearn.decomposition import PCA
 from sklearn.decomposition import IncrementalPCA
 from sklearn.decomposition import MiniBatchSparsePCA
+from sklearn.decomposition import MiniBatchDictionaryLearning
+from sklearn.decomposition import SparseCoder
 from sklearn.decomposition import KernelPCA
 from sklearn.decomposition import RandomizedPCA
 from sklearn.decomposition import SparsePCA
@@ -128,6 +130,74 @@ def cluster_sk_pca_sparse(content):
         tol=content['tol'],
         method=content['sk_method'],
         n_jobs=-1
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'error': _config.error_,
+        'iter': _config.n_iter_
+    }))
+
+# def cluster_sk_sparse_coder(content):
+#     """ x """
+#     _config = SparseCoder(
+#         n_components=content['n_components'],
+#         alpha=content['alpha'],
+#         ridge_alpha=content['ridge_alpha'],
+#         max_iter=content['max_iter'],
+#         tol=content['tol'],
+#         method=content['sk_method'],
+#         n_jobs=-1
+#     )
+#     _result = _config.fit_transform(content['data'])
+#     return httpWrapper(json.dumps({
+#         'result':  _result.tolist(),
+#         'components': _config.components_.tolist(),
+#         'error': _config.error_,
+#         'iter': _config.n_iter_
+#     }))
+
+
+def cluster_sk_mini_batch_dictionary_learning(content):
+    """ x """
+    _config = MiniBatchDictionaryLearning(
+        n_components=content['n_components'],
+        alpha=content['alpha'],
+        n_iter=content['n_iter'], 
+        fit_algorithm=content['fit_algorithm'], 
+        n_jobs=1, 
+        batch_size=content['batch_size'], 
+        shuffle=content['shuffle'], 
+        dict_init=None, 
+        transform_algorithm=content['transform_algorithm'], 
+        transform_n_nonzero_coefs=None, 
+        transform_alpha=None, 
+        verbose=False, 
+        split_sign=content['split_sign'], 
+        random_state=None
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'iter': _config.n_iter_
+    }))
+
+def cluster_sk_mini_batch_sparse_pca(content):
+    """ x """
+    _config = MiniBatchSparsePCA(
+        n_components=content['n_components'],
+        alpha=content['alpha'],
+        ridge_alpha=content['ridge_alpha'],
+        n_iter=content['n_iter'], 
+        callback=None,
+        batch_size=content['batch_size'],
+        verbose=0,
+        shuffle=content['shuffle'],
+        n_jobs=-1,
+        method=content['method'],
+        random_state=None
     )
     _result = _config.fit_transform(content['data'])
     return httpWrapper(json.dumps({
@@ -618,7 +688,9 @@ def main():
         'cluster_sk_agglomerative': cluster_sk_agglomerative,
         'cluster_sk_spectral': cluster_sk_spectral,
         'discriminant_analysis_sk_linear': discriminant_analysis_sk_linear,
-        'discriminant_analysis_sk_quadratic': discriminant_analysis_sk_quadratic
+        'discriminant_analysis_sk_quadratic': discriminant_analysis_sk_quadratic,
+        'cluster_sk_mini_batch_dictionary_learning': cluster_sk_mini_batch_dictionary_learning,
+        'cluster_sk_mini_batch_sparse_pca': cluster_sk_mini_batch_sparse_pca,
     }.get(content['method'], echo)
     return function_to_invoke(content)
 
