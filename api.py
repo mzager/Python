@@ -196,7 +196,7 @@ def cluster_sk_mini_batch_sparse_pca(content):
         verbose=0,
         shuffle=content['shuffle'],
         n_jobs=-1,
-        method=content['method'],
+        method=content['sk_method'],
         random_state=None
     )
     _result = _config.fit_transform(content['data'])
@@ -628,7 +628,7 @@ def discriminant_analysis_sk_linear(content):
 def discriminant_analysis_sk_quadratic(content):
     """ discriminant_analysis_sk_QuadraticDiscriminantAnalysis """
     _config = QuadraticDiscriminantAnalysis(
-        priors = content['priors'],
+        priors = None,
         reg_param = content['reg_param'],
         store_covariance = content['store_covariance'],
         tol = content['tol']
