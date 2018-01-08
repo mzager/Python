@@ -605,8 +605,8 @@ def discriminant_analysis_sk_linear(content):
     """ discriminant_analysis_LinearDiscriminantAnalysis """
     _config = LinearDiscriminantAnalysis(
         solver = content['solver'],
-        shrinkage = content['shrinkage'],
-        priors = content['priors'],
+        shrinkage = None if (content['shrinkage']=='None') else content['shrinkage']
+        priors = None,
         n_components = content['n_components'],
         store_covariance = content['store_covariance'],
         tol = content['tol']
