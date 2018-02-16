@@ -1,16 +1,15 @@
 :: Angular
 ng build --prod --aot=true --vendor-chunk=false --stats-json=true
 
-:: Locally :::
+:: Locally
 docker build .
 docker tag <img_id> zager/notitia:latest
 docker login
 docker push zager/notitia:latest
-
 
 :: Login To Server
 ssh mzager@oncoscape-opencpu.sttrcancer.io
 docker kill $(docker ps -q)
 docker rmi $(docker images -q)
 docker pull zager/notitia:latest
-docker run --rm -p 80:80 zager/notitia
+docker run --rm -p 80:80 zager/notitia &

@@ -29,6 +29,7 @@ from sklearn.decomposition import FastICA
 from sklearn.decomposition import DictionaryLearning
 from sklearn.decomposition import TruncatedSVD
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import AffinityPropagation
@@ -39,6 +40,10 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import MeanShift
 from sklearn.cluster import SpectralClustering
+
+import sys, numpy, scipy
+import scipy.cluster.hierarchy as hier
+import scipy.spatial.distance as dist
 
 
 def httpWrapper(content):
@@ -203,7 +208,6 @@ def cluster_sk_mini_batch_sparse_pca(content):
     return httpWrapper(json.dumps({
         'result':  _result.tolist(),
         'components': _config.components_.tolist(),
-        'error': _config.error_,
         'iter': _config.n_iter_
     }))
 
@@ -476,23 +480,55 @@ def cluster_sk_dbscan(content):
         'components': _config.components_,
         'labels': _config.labels_
     }))
+
+
+
 def cluster_sk_agglomerative(content):
     """ Agglomerative Clustering """
-    _config = AgglomerativeClustering(
-        n_clusters = content['n_clusters'],
-        affinity = content['affinity'],
-        linkage = content['linkage'],
-    )
-    _result = _config.fit_predict(content['data'])
+    if content['transpose'] == 1:
+        content['data'] = list(map(list, zip(*content['data'])))
+    dataMatrix = numpy.array(content['data'])
+    # distanceMatrix = dist.pdist(dataMatrix)
+    # distanceSquareMatrix = dist.squareform(distanceMatrix)
+    linkageMatrix = hier.linkage(dataMatrix,
+        method=content['sp_method'],
+        metric=content['sp_metric'],
+        optimal_ordering=content['sp_ordering'] == 1)
+    heatmapOrder = hier.leaves_list(linkageMatrix)
+    orderedDataMatrix = dataMatrix[heatmapOrder,:]
+
     return httpWrapper( json.dumps({
-        'result': _result.tolist(),
-        'n_leaves': _config.n_leaves_,
-        'n_components': _config.n_components_,
-        'labels': _config.labels_.tolist(),
-        'children': base64.b64encode(_config.children_)
-        #'children': _config.children_.tolist(),
-        #'labels': _config.labels_.toList()
-    }))
+		'result': orderedDataMatrix.tolist(),
+		'order': heatmapOrder.tolist(),
+		'dendo': hier.dendrogram(linkageMatrix, no_plot=True)
+	}))
+
+
+
+ #    if content['transpose'] == 1:
+ #    	content['data'] = list(map(list, zip(*content['data'])))
+ #    _config = AgglomerativeClustering(
+ #        n_clusters = len(content['data']), #content['n_clusters'],
+ #        affinity = content['affinity'],
+ #        linkage = content['linkage'],
+ #    )
+ #    _result = _config.fit_predict(content['data'])
+ #    # _nodes = dict(enumerate(_config.children_, _config.n_leaves_));
+
+	# plot_dendrogram(model, labels=model.labels_)
+
+
+
+
+ #    return httpWrapper( json.dumps({
+ #        'result': _result.tolist(),
+ #        'n_leaves': _config.n_leaves_,
+ #        'n_components': _config.n_components_,
+ #        'labels': _config.labels_.tolist(),
+ #        # 'children': base64.b64encode(_config.children_)
+ #        'children': _config.children_.tolist(),
+ #        #'labels': _config.labels_.toList()
+ #    }))
 def cluster_sk_feature_agglomeration(content):
     """ FeatureAgglomeration """
     _config = FeatureAgglomeration(
@@ -601,7 +637,7 @@ def cluster_sk_spectral(content):
         'labels': _config.labels_
     }))
 
-def discriminant_analysis_sk_linear(content):
+def manifold_sk_lineardiscriminantanalysis(content):
     """ discriminant_analysis_LinearDiscriminantAnalysis """
     _config = LinearDiscriminantAnalysis(
         solver = content['solver'],
@@ -611,7 +647,7 @@ def discriminant_analysis_sk_linear(content):
         store_covariance = content['store_covariance'],
         tol = content['tol']
     )
-    _result = _config.fit_predict(content['data'])
+    _result = _config.fit_transform(content['data'], y=None)
     return httpWrapper( json.dumps({
         'result': _result.tolist(),
         'coef': _config.coef_,
@@ -625,15 +661,15 @@ def discriminant_analysis_sk_linear(content):
         'classes': _config.classes_
     }))
 
-def discriminant_analysis_sk_quadratic(content):
+def manifold_sk_quadradicdiscriminantanalysis(content):
     """ discriminant_analysis_sk_QuadraticDiscriminantAnalysis """
     _config = QuadraticDiscriminantAnalysis(
         priors = None,
-        reg_param = content['reg_param'],
+        reg_param = 0.0, #content['reg_param'],
         store_covariance = content['store_covariance'],
         tol = content['tol']
     )
-    _result = _config.fit_predict(content['data'])
+    _result = _config.fit_transform(content['data'])
     return httpWrapper( json.dumps({
         'result': _result.tolist(),
         'covariance': _config.covariance_,
@@ -687,8 +723,8 @@ def main():
         'cluster_sk_mean_shift': cluster_sk_mean_shift,
         'cluster_sk_agglomerative': cluster_sk_agglomerative,
         'cluster_sk_spectral': cluster_sk_spectral,
-        'discriminant_analysis_sk_linear': discriminant_analysis_sk_linear,
-        'discriminant_analysis_sk_quadratic': discriminant_analysis_sk_quadratic,
+        'manifold_sk_lineardiscriminantanalysis': manifold_sk_lineardiscriminantanalysis,
+        'manifold_sk_quadradicdiscriminantanalysis': manifold_sk_quadradicdiscriminantanalysis,
         'cluster_sk_mini_batch_dictionary_learning': cluster_sk_mini_batch_dictionary_learning,
         'cluster_sk_mini_batch_sparse_pca': cluster_sk_mini_batch_sparse_pca,
     }.get(content['method'], echo)
