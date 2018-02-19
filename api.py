@@ -41,9 +41,15 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import MeanShift
 from sklearn.cluster import SpectralClustering
 
+import pandas as pd
 import sys, numpy, scipy
 import scipy.cluster.hierarchy as hier
 import scipy.spatial.distance as dist
+
+from lifelines import KaplanMeierFitter
+from lifelines import NelsonAalenFitter
+from lifelines import CoxPHFitter
+from lifelines import AalenAdditiveFitter
 
 
 def httpWrapper(content):
@@ -51,6 +57,43 @@ def httpWrapper(content):
 
 def echo(content):
     return httpWrapper(json.dumps(content))
+
+def survival_ll_kaplan_meier(content):
+    T = numpy.array(content['times'], dtype=int)
+    E = numpy.array(content['events'], dtype=bool)
+    kmf = KaplanMeierFitter()
+    kmf.fit(T,E)
+    return httpWrapper( json.dumps({
+		'result': kmf.survival_function_.to_dict(),
+		'confidence': kmf.confidence_interval_.to_dict(),
+		'median': kmf.median_
+		}))
+
+def survival_ll_nelson_aalen(content):
+	kmf = NelsonAalenFitter()
+	kmf.fit(content['times'], event_observed=content['events'])
+	return httpWrapper( json.dumps({
+		'result': kmf.survival_function_,
+		'hazard': cumulative_hazard_,
+		'median': kmf.kmf.median_
+		}))
+
+def cluster_sp_agglomerative(content):
+    """ Agglomerative Clustering """
+    if content['transpose'] == 1:
+        content['data'] = list(map(list, zip(*content['data'])))
+    dataMatrix = numpy.array(content['data'])
+    linkageMatrix = hier.linkage(dataMatrix,
+        method=content['sp_method'],
+        metric=content['sp_metric'],
+        optimal_ordering=content['sp_ordering'] == 1)
+    heatmapOrder = hier.leaves_list(linkageMatrix)
+    orderedDataMatrix = dataMatrix[heatmapOrder,:]
+    return httpWrapper( json.dumps({
+		'result': orderedDataMatrix.tolist(),
+		'order': heatmapOrder.tolist(),
+		'dendo': hier.dendrogram(linkageMatrix, no_plot=True)
+	}))
 
 def cluster_sk_pca(content):
     """ SK PCA | components: N, data:[[]] """
@@ -144,25 +187,24 @@ def cluster_sk_pca_sparse(content):
         'iter': _config.n_iter_
     }))
 
-# def cluster_sk_sparse_coder(content):
-#     """ x """
-#     _config = SparseCoder(
-#         n_components=content['n_components'],
-#         alpha=content['alpha'],
-#         ridge_alpha=content['ridge_alpha'],
-#         max_iter=content['max_iter'],
-#         tol=content['tol'],
-#         method=content['sk_method'],
-#         n_jobs=-1
-#     )
-#     _result = _config.fit_transform(content['data'])
-#     return httpWrapper(json.dumps({
-#         'result':  _result.tolist(),
-#         'components': _config.components_.tolist(),
-#         'error': _config.error_,
-#         'iter': _config.n_iter_
-#     }))
-
+def cluster_sk_sparse_coder(content):
+    """ x """
+    _config = SparseCoder(
+        n_components=content['n_components'],
+        alpha=content['alpha'],
+        ridge_alpha=content['ridge_alpha'],
+        max_iter=content['max_iter'],
+        tol=content['tol'],
+        method=content['sk_method'],
+        n_jobs=-1
+    )
+    _result = _config.fit_transform(content['data'])
+    return httpWrapper(json.dumps({
+        'result':  _result.tolist(),
+        'components': _config.components_.tolist(),
+        'error': _config.error_,
+        'iter': _config.n_iter_
+    }))
 
 def cluster_sk_mini_batch_dictionary_learning(content):
     """ x """
@@ -482,53 +524,23 @@ def cluster_sk_dbscan(content):
     }))
 
 
-
 def cluster_sk_agglomerative(content):
-    """ Agglomerative Clustering """
     if content['transpose'] == 1:
-        content['data'] = list(map(list, zip(*content['data'])))
-    dataMatrix = numpy.array(content['data'])
-    # distanceMatrix = dist.pdist(dataMatrix)
-    # distanceSquareMatrix = dist.squareform(distanceMatrix)
-    linkageMatrix = hier.linkage(dataMatrix,
-        method=content['sp_method'],
-        metric=content['sp_metric'],
-        optimal_ordering=content['sp_ordering'] == 1)
-    heatmapOrder = hier.leaves_list(linkageMatrix)
-    orderedDataMatrix = dataMatrix[heatmapOrder,:]
-
+    	content['data'] = list(map(list, zip(*content['data'])))
+    _config = AgglomerativeClustering(
+        n_clusters = len(content['data']), #content['n_clusters'],
+        affinity = content['affinity'],
+        linkage = content['linkage'],
+    )
+    _result = _config.fit_predict(content['data'])
     return httpWrapper( json.dumps({
-		'result': orderedDataMatrix.tolist(),
-		'order': heatmapOrder.tolist(),
-		'dendo': hier.dendrogram(linkageMatrix, no_plot=True)
-	}))
+        'result': _result.tolist(),
+        'n_leaves': _config.n_leaves_,
+        'n_components': _config.n_components_,
+        'labels': _config.labels_.tolist(),
+        'children': _config.children_.tolist(),
+    }))
 
-
-
- #    if content['transpose'] == 1:
- #    	content['data'] = list(map(list, zip(*content['data'])))
- #    _config = AgglomerativeClustering(
- #        n_clusters = len(content['data']), #content['n_clusters'],
- #        affinity = content['affinity'],
- #        linkage = content['linkage'],
- #    )
- #    _result = _config.fit_predict(content['data'])
- #    # _nodes = dict(enumerate(_config.children_, _config.n_leaves_));
-
-	# plot_dendrogram(model, labels=model.labels_)
-
-
-
-
- #    return httpWrapper( json.dumps({
- #        'result': _result.tolist(),
- #        'n_leaves': _config.n_leaves_,
- #        'n_components': _config.n_components_,
- #        'labels': _config.labels_.tolist(),
- #        # 'children': base64.b64encode(_config.children_)
- #        'children': _config.children_.tolist(),
- #        #'labels': _config.labels_.toList()
- #    }))
 def cluster_sk_feature_agglomeration(content):
     """ FeatureAgglomeration """
     _config = FeatureAgglomeration(
@@ -698,6 +710,8 @@ def main():
     """ Gateway """
     content = request.get_json()
     function_to_invoke = {
+    	'survival_ll_kaplan_meier': survival_ll_kaplan_meier,
+    	'cluster_sp_agglomerative': cluster_sp_agglomerative,	
         'cluster_sk_pca': cluster_sk_pca,
         'cluster_sk_pca_incremental': cluster_sk_pca_incremental,
         'cluster_sk_pca_kernal': cluster_sk_pca_kernal,
