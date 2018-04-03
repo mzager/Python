@@ -93,6 +93,7 @@ def cluster_sp_agglomerative(content):
 		'result': orderedDataMatrix.tolist(),
 		'order': heatmapOrder.tolist(),
 		'dendo': hier.dendrogram(linkageMatrix, no_plot=True)
+        # 'tree': hier.to_tree(linkageMatrix, rd=False)
 	}))
 
 def cluster_sk_pca(content):
